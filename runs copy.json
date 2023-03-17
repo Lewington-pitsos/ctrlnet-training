@@ -1,0 +1,58 @@
+{
+    "runs": [
+        {
+            "run_name": "laion-100k-zconv",
+            "experiment_name": "laion-100k",
+            "model_config_path": "models/cldm_v21.yaml",
+            "train_url": "training/laion-100k-data/{00000..00199}.tar",
+            "test_url": "training/laion-100k-data/00200.tar",
+            "resume_path": "checkpoints/cldm.ckpt",
+            "batch_size": 4,
+            "img_logger_freq": 500,
+            "zc_logger_freq": 100,
+            "learning_rate": 1e-5,
+            "hint_proportion": 0.35,
+            "sd_locked": true,
+            "only_mid_control": false,
+            "max_steps": 4000,
+            "val_check_interval": 1000,
+            "use_wandb": true
+        },
+        {
+            "run_name": "laion-100k-normal_conv",
+            "experiment_name": "laion-100k",
+            "model_config_path": "models/cldm_v21_normal_conv.yaml",
+            "train_url": "training/laion-100k-data/{00000..00199}.tar",
+            "test_url": "training/laion-100k-data/00200.tar",
+            "resume_path": "checkpoints/cldm_normal.ckpt",
+            "batch_size": 4,
+            "img_logger_freq": 500,
+            "zc_logger_freq": 100,
+            "learning_rate": 1e-5,
+            "hint_proportion": 0.35,
+            "sd_locked": true,
+            "only_mid_control": false,
+            "max_steps": 4000,
+            "val_check_interval": 1000,
+            "use_wandb": true
+        },
+        {
+            "run_name": "laion-100k-singleton",
+            "experiment_name": "laion-100k",
+            "model_config_path": "models/cldm_v21_singleton.yaml",
+            "train_url": "training/laion-100k-data/{00000..00199}.tar",
+            "test_url": "training/laion-100k-data/00200.tar",
+            "resume_path": "checkpoints/cldm_singleton.ckpt",
+            "batch_size": 4,
+            "img_logger_freq": 500,
+            "zc_logger_freq": 100,
+            "learning_rate": 1e-5,
+            "hint_proportion": 0.35,
+            "sd_locked": true,
+            "only_mid_control": false,
+            "max_steps": 4000,
+            "val_check_interval": 1000,
+            "use_wandb": true
+        }
+    ]
+}
