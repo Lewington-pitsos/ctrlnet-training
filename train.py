@@ -49,11 +49,12 @@ def perform_training_run(args: DictConfig, tune=False):
         learning_rate=args.learning_rate,
         train_url=args.train_url, 
         test_url=args.test_url,
-        hint_proportion=args.hint_proportion,
+        hint_proportion=args.get('hint_proportion'),
         accumulate_grad_batches=args.get('accumulate_grad_batches'),
         max_steps=args.max_steps,
         input_size=args.input_size,
-        run_name=args.run_name
+        run_name=args.run_name,
+        hint_type=args.hint_type
     ).cpu()
     if args.resume_path != '':
         model.load_state_dict(load_state_dict(args.resume_path, location='cpu'))
@@ -61,6 +62,7 @@ def perform_training_run(args: DictConfig, tune=False):
     model.only_mid_control = args.only_mid_control
 
     train_dl, test_dl = load_laion(
+        model.hparams['hint_type'],
         model.hparams['batch_size'], 
         model.hparams['train_url'], 
         model.hparams['test_url'],
@@ -68,7 +70,7 @@ def perform_training_run(args: DictConfig, tune=False):
         model.hparams['hint_proportion'], 
     )
 
-    img_logger = ImageLogger(batch_frequency=args.img_logger_freq)
+    img_logger = ImageLogger(test_dl, batch_frequency=args.img_logger_freq, n_batches=16)
     zc_logger = ZeroConvLogger(args.zc_logger_freq)
     model_path = args.run_name + '-' + str(uuid4()) + '.ckpt'
     dirpath = "checkpoints/"
@@ -89,7 +91,7 @@ def perform_training_run(args: DictConfig, tune=False):
         accumulate_grad_batches=model.hparams['accumulate_grad_batches'],
         log_every_n_steps=args.zc_logger_freq,
         max_steps=model.hparams['max_steps'],
-        val_check_interval=args.val_check_interval,
+        # val_check_interval=args.val_check_interval,
         auto_lr_find =tune
     )
 
@@ -100,8 +102,10 @@ def perform_training_run(args: DictConfig, tune=False):
     else: 
         print("model learning rate", model.learning_rate)
 
-        trainer.validate(model, test_dl)
-        trainer.fit(model, train_dl, test_dl)
+        # trainer.validate(model, test_dl)
+        # trainer.fit(model, train_dl, test_dl)
+        trainer.fit(model, train_dl)
+
 
         if args.use_wandb:
             wandb.save(dirpath + model_path)

@@ -1,21 +1,21 @@
 {
     "runs": [
         {
-            "run_name": "laion-100k-rising",
-            "experiment_name":"laion-100k",
-            "model_config_path": "models/cldm_v21_rising.yaml",
-            "train_url": "training/laion-100k-data/{00000..00198}.tar",
-            "test_url": "training/laion-100k-data/00199.tar",
-            "resume_path": "checkpoints/cldm_v21_rising.ckpt",
+            "experiment_name": "ctrlnet-laion-100k-canny",
+            "run_name": "laion-20-test",
+            "hint_type": "canny",
+            "model_config_path": "models/cldm_v21.yaml",
+            "train_url": "training/laion-20-data/{00000..00008}.tar",
+            "test_url": "training/laion-20-data/00009.tar",
+            "resume_path": "checkpoints/cldm_v21.ckpt",
             "batch_size": 4,
-            "img_logger_freq": 500,
-            "zc_logger_freq": 1,
-            "learning_rate": 2e-04,
-            "hint_proportion": 0.35,
+            "img_logger_freq": 5,
+            "zc_logger_freq": 2,
+            "learning_rate": 1e-05,
             "sd_locked": true,
             "only_mid_control": false,
-            "max_steps": 25,
-            "val_check_interval": 1000,
+            "max_steps": 40,
+            "val_check_interval": 5,
             "input_size": 512,
             "use_wandb": true
         }

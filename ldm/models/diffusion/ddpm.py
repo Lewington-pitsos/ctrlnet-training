@@ -134,6 +134,7 @@ class DDPM(pl.LightningModule):
         if self.ucg_training:
             self.ucg_prng = np.random.RandomState()
 
+
     def register_schedule(self, given_betas=None, beta_schedule="linear", timesteps=1000,
                           linear_start=1e-4, linear_end=2e-2, cosine_s=8e-3):
         if exists(given_betas):
@@ -470,6 +471,10 @@ class DDPM(pl.LightningModule):
             loss_dict_ema = {key + '_ema': loss_dict_ema[key] for key in loss_dict_ema}
         self.log_dict(loss_dict_no_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True,)
         self.log_dict(loss_dict_ema, prog_bar=False, logger=True, on_step=False, on_epoch=True,)
+
+        score = metric(torch.randint(255, (3, 224, 224)), batch['txt'])
+
+
 
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
