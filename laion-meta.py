@@ -9,5 +9,5 @@ def main(limit, partitions, name):
     writer = df.repartition(partitions).write
     writer.mode("overwrite").parquet(name)
 
-main(100_000, 200, "training/laion-100k-meta/")
+main(500_000, 200, "training/laion-400k-meta/")
 # main(20, 1, "training/laion-20-meta/")

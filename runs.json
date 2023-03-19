@@ -8,14 +8,14 @@
             "train_url": "training/laion-100k-data/{00000..00198}.tar",
             "test_url": "training/laion-100k-data/00199.tar",
             "resume_path": "checkpoints/cldm_v21.ckpt",
-            "batch_size": 8,
+            "batch_size": 4,
+            "test_batch_size": 4,
             "img_logger_freq": 500,
             "zc_logger_freq": 100,
             "learning_rate": 1e-05,
             "sd_locked": true,
-            "only_mid_control": true,
+            "only_mid_control": false,
             "max_steps": 12000,
-            "val_check_interval": 1000,
             "input_size": 512,
             "use_wandb": true
         }

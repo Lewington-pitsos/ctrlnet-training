@@ -51,6 +51,7 @@ def perform_training_run(args: DictConfig, tune=False):
         test_url=args.test_url,
         hint_proportion=args.get('hint_proportion'),
         accumulate_grad_batches=args.get('accumulate_grad_batches'),
+        test_batch_size=args.get('test_batch_size'),
         max_steps=args.max_steps,
         input_size=args.input_size,
         run_name=args.run_name,
@@ -68,9 +69,10 @@ def perform_training_run(args: DictConfig, tune=False):
         model.hparams['test_url'],
         model.hparams['input_size'],
         model.hparams['hint_proportion'], 
+        model.hparams['test_batch_size'],    
     )
 
-    img_logger = ImageLogger(test_dl, batch_frequency=args.img_logger_freq, n_batches=16)
+    img_logger = ImageLogger(test_dl, batch_frequency=args.img_logger_freq, n_batches=8)
     zc_logger = ZeroConvLogger(args.zc_logger_freq)
     model_path = args.run_name + '-' + str(uuid4()) + '.ckpt'
     dirpath = "checkpoints/"

@@ -55,13 +55,13 @@ def make_parser(hint_type, proportion, side_length):
     
     raise ValueError(f'Unexpected dataset loading method: {hint_type}')
 
-def load_laion(hint_type, batch_size, train_url, test_url, resize, proportion):
+def load_laion(hint_type, batch_size, train_url, test_url, resize, proportion, test_batch_size=None):
     parser = make_parser(hint_type, proportion, resize)
     train = wds.WebDataset(train_url).map(parser)
     test = wds.WebDataset(test_url).map(parser)
 
     train_dl = DataLoader(train, batch_size=batch_size, num_workers=0)
-    test_dl = DataLoader(test, batch_size=batch_size, num_workers=0)
+    test_dl = DataLoader(test, batch_size=batch_size if test_batch_size is None else test_batch_size, num_workers=0)
 
     return train_dl, test_dl
 
