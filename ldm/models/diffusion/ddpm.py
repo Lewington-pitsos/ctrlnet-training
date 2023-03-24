@@ -474,8 +474,6 @@ class DDPM(pl.LightningModule):
 
         score = metric(torch.randint(255, (3, 224, 224)), batch['txt'])
 
-
-
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
             self.model_ema(self.model)

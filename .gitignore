@@ -144,3 +144,4 @@ dmypy.json
 wandb/
 checkpoints
 models/*.ckpt
+okr.md

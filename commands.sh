@@ -14,3 +14,4 @@ python ./tutorial_train_sd21.py --model_config_path=models\cldm_v21_singleton.ya
 
 python ./tool_add_control_sd21.py models/512.ckpt ./checkpoints/cldm_v21.ckpt             ./models/cldm_v21.yaml && python ./tool_add_control_sd21.py models/512.ckpt ./checkpoints/cldm_v21_normal_conv.ckpt ./models/cldm_v21_normal_conv.yaml && python ./tool_add_control_sd21.py models/512.ckpt ./checkpoints/cldm_v21_singleton.ckpt    ./models/cldm_v21_singleton.yaml && python ./tool_add_control_sd21.py models/512.ckpt ./checkpoints/cldm_v21_rising.ckpt      ./models/cldm_v21_rising.yaml
 
+python ./tool_add_control_sd21.py models/512.ckpt ./checkpoints/cldm_v21_null.ckpt             ./models/cldm_v21_null.yaml

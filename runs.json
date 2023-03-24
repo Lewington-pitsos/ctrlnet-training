@@ -2,7 +2,7 @@
     "runs": [
         {
             "experiment_name": "zc-laion-100k-canny",
-            "run_name": "laion-100k-zconv",
+            "run_name": "laion-100k-zc-1e-5-text-dropout",
             "hint_type": "canny",
             "model_config_path": "models/cldm_v21.yaml",
             "train_url": "training/laion-100k-data/{00000..00198}.tar",
@@ -17,7 +17,10 @@
             "only_mid_control": false,
             "max_steps": 12000,
             "input_size": 512,
-            "use_wandb": true
+            "use_wandb": true,
+            "text_proportion": 0.5,
+            "n_sampling_steps": 50,
+            "unconditional_guidance_scale": 9.0
         }
     ]
 }

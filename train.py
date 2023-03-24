@@ -25,7 +25,7 @@ import wandb
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-from cldm.logger import ImageLogger, ZeroConvLogger
+from cldm.logger import ImageLogger, ZeroConvLogger, detach_weights
 from cldm.model import create_model, load_state_dict
 from wds_load import load_laion
 import argparse
@@ -55,24 +55,40 @@ def perform_training_run(args: DictConfig, tune=False):
         max_steps=args.max_steps,
         input_size=args.input_size,
         run_name=args.run_name,
-        hint_type=args.hint_type
+        hint_type=args.hint_type,
+        text_proportion=args.text_proportion,
+        model_config=args.model_config_path,
+        starting_checkpoint=args.resume_path,
+        n_sampling_steps=args.get('n_sampling_steps'),
+        unconditional_guidance_scale=args.get('unconditional_guidance_scale')
     ).cpu()
+
     if args.resume_path != '':
         model.load_state_dict(load_state_dict(args.resume_path, location='cpu'))
     model.sd_locked = args.sd_locked
     model.only_mid_control = args.only_mid_control
 
-    train_dl, test_dl = load_laion(
+    train_dl, test = load_laion(
         model.hparams['hint_type'],
         model.hparams['batch_size'], 
         model.hparams['train_url'], 
         model.hparams['test_url'],
         model.hparams['input_size'],
         model.hparams['hint_proportion'], 
-        model.hparams['test_batch_size'],    
+        model.hparams['test_batch_size'],
+        model.hparams['text_proportion'],    
     )
 
-    img_logger = ImageLogger(test_dl, batch_frequency=args.img_logger_freq, n_batches=8)
+    img_logger = ImageLogger(
+        test, 
+        model, 
+        batch_frequency=args.img_logger_freq, 
+        n_batches=8, 
+        log_images_kwargs={
+            "ddim_steps":model.hparams['n_sampling_steps'] if model.hparams['n_sampling_steps'] is not None else 50,
+            "unconditional_guidance_scale": model.hparams['unconditional_guidance_scale'] if model.hparams['unconditional_guidance_scale'] is not None else 9.0
+        }
+    )
     zc_logger = ZeroConvLogger(args.zc_logger_freq)
     model_path = args.run_name + '-' + str(uuid4()) + '.ckpt'
     dirpath = "checkpoints/"
@@ -83,7 +99,7 @@ def perform_training_run(args: DictConfig, tune=False):
         wandb_logger = WandbLogger(project=args.experiment_name)
         training_logger = [wandb_logger]
         wandb.init(project=args.experiment_name, config=args)
-    
+
     trainer = pl.Trainer(
         accelerator='gpu', 
         devices=1,
@@ -97,9 +113,13 @@ def perform_training_run(args: DictConfig, tune=False):
         auto_lr_find =tune
     )
 
+    # img_logger.log_img(model, None, 0)
+
+    # raise ValueError()
+
     if tune:
         print('initial lr', model.learning_rate)
-        trainer.tune(model, train_dl, test_dl)
+        trainer.tune(model, train_dl)
         print(model.learning_rate)
     else: 
         print("model learning rate", model.learning_rate)

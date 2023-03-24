@@ -1,3 +1,4 @@
+from collections import defaultdict
 import wandb
 import torch
 import torch.nn.functional as F
@@ -30,10 +31,28 @@ class ClipScore():
             scores= (F.cosine_similarity(text_embeds, image_embeds) * 100).clip(0)
         return scores.detach()
 
+def detach_weights(model):
+    weights = {
+        'early_input': model.control_model.input_blocks[5][0].in_layers[2].weight.detach().cpu(),
+        'late_input':  model.control_model.input_blocks[10][0].in_layers[2].weight.detach().cpu(),
+        'middle': model.control_model.middle_block[2].in_layers[2].weight.detach().cpu(),
+    }
+
+    return weights
+
+def weight_euclidian(weights, model):
+    new_weights = detach_weights(model)
+
+    metrics = {}
+
+    for key, weight in weights.items():
+        metrics[key + '_euclidian'] = (new_weights[key] - weight).pow(2).sum().sqrt()
+    
+    return metrics
+
 class ImageLogger(Callback):
-    def __init__(self, tst_loader, batch_frequency=2000, max_images=8, n_batches=16, increase_log_steps=True,
-                 rescale=True, disabled=False, log_on_batch_idx=False, log_first_step=False, unconditional_guidence_scale=9.0,
-                 log_images_kwargs=None):
+    def __init__(self, tst_loader, model, batch_frequency=2000, max_images=8, n_batches=16, increase_log_steps=True,
+                 rescale=True, disabled=False, log_on_batch_idx=False, log_first_step=False, log_images_kwargs=None):
         super().__init__()
         self.rescale = rescale
         self.tst_loader = tst_loader
@@ -46,20 +65,22 @@ class ImageLogger(Callback):
         self.log_images_kwargs = log_images_kwargs if log_images_kwargs else {}
         self.log_first_step = log_first_step
         self.n_batches = n_batches
-        self.guidence_scale = unconditional_guidence_scale
+        self.guidence_scale = 9.0 if log_images_kwargs is None else log_images_kwargs['unconditional_guidance_scale']
         self.output_name = f"samples_cfg_scale_{self.guidence_scale:.2f}"
         self.clip_score = ClipScore()
         self.fid_score = FrechetInceptionDistance(feature=64)
+        self.initial_weights = detach_weights(model)
 
     def to_uint8(self, img):
         return ((img + 1) * 127.5).to(torch.uint8)
 
     def log_img(self, pl_module, batch, batch_idx, split="train"):
-        check_idx = batch_idx  # if self.log_on_batch_idx else pl_module.global_step
-        if (self.check_frequency(check_idx) and 
+        if (self.check_frequency(batch_idx) and 
                 hasattr(pl_module, "log_images") and
                 callable(pl_module.log_images) and
                 self.max_images > 0):
+
+            wandb.log(weight_euclidian(self.initial_weights, pl_module)) 
 
             dl = iter(self.tst_loader)
 
@@ -69,8 +90,11 @@ class ImageLogger(Callback):
             if is_train:
                 pl_module.eval()
 
+            img_dict = defaultdict(lambda: [])
+            prompts = []
+
             for i in range(self.n_batches):
-                tst_batch = next(dl)
+                tst_batch =  next(dl)
 
                 with torch.no_grad():
                     images = pl_module.log_images(tst_batch, split=split, **self.log_images_kwargs)
@@ -89,16 +113,23 @@ class ImageLogger(Callback):
                     self.fid_score.update(self.to_uint8(images['reconstruction']), real=True)
                     self.fid_score.update(self.to_uint8(images[self.output_name]), real=False)
 
-                if i == 0:
+                if i <= 2:
+                    prompts.extend(tst_batch[pl_module.cond_stage_key])
                     for key in images:
-                        wandb.log({key: wandb.Image(images[key])})
+                        img_dict[key].append(images[key])
+
+            for key in img_dict:
+                img_dict[key] = wandb.Image(torch.cat(img_dict[key]))
+
+            img_dict['conditioning'] = prompts
+
+            wandb.log(img_dict)
             
             wandb.log({
                 'clip_score': clip_mean / batch_count,
                 'fid_64': self.fid_score.compute(),
             })
-
-            self.fid_score.reset()
+            self.fid_score.reset()            
 
             if is_train:
                 pl_module.train()
@@ -106,7 +137,7 @@ class ImageLogger(Callback):
     def check_frequency(self, check_idx):
         return check_idx % self.batch_freq == 0
 
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=None):
+    def on_train_batch_start(self, trainer, pl_module, batch, batch_idx, dataloader_idx=None):
         if not self.disabled:
             self.log_img(pl_module, batch, batch_idx, split="train")
 
@@ -130,20 +161,21 @@ class ZeroConvLogger(Callback):
                 weight_std = 0
                 weight_frobenius_norm = 0
 
-                for i, c in enumerate(pl_module.control_model.zero_convs):              
+                for i, c in enumerate(pl_module.control_model.zero_convs):  
                     layer = c[0]
+                    if hasattr(layer, 'weight'):            
 
-                    weight_mean += layer.weight.mean()
-                    weight_std += layer.weight.std()
-                    weight_frobenius_norm += torch.norm(layer.weight)
+                        weight_mean += layer.weight.mean()
+                        weight_std += layer.weight.std()
+                        weight_frobenius_norm += torch.norm(layer.weight)
 
-                    wandb.log({
-                        f'zc-{i}': {
-                            'zc-weight-std': layer.weight.std(),
-                            'zc-weight-mean': layer.weight.mean(),
-                            'zc-weight-frob': torch.norm(layer.weight),
-                        }
-                    })
+                        wandb.log({
+                            f'zc-{i}': {
+                                'zc-weight-std': layer.weight.std(),
+                                'zc-weight-mean': layer.weight.mean(),
+                                'zc-weight-frob': torch.norm(layer.weight),
+                            }
+                        })
                     count += 1
 
                 if hasattr(c, 'weight_factor'):

@@ -55,41 +55,52 @@ def make_parser(hint_type, proportion, side_length):
     
     raise ValueError(f'Unexpected dataset loading method: {hint_type}')
 
-def load_laion(hint_type, batch_size, train_url, test_url, resize, proportion, test_batch_size=None):
+def make_nullifier(proportion):
+
+    def nullifier(item):
+        if random.random() > proportion:
+            item['txt'] = ''
+        return item
+    
+    return nullifier
+
+
+def nice_prompts(item):
+    item['txt'] = '4k, trending on artstation ' + item['txt'] 
+    
+    return item
+
+def load_laion(hint_type, batch_size, train_url, test_url, 
+    resize, proportion, test_batch_size=None, text_proportion=1.0):
     parser = make_parser(hint_type, proportion, resize)
     train = wds.WebDataset(train_url).map(parser)
     test = wds.WebDataset(test_url).map(parser)
 
-    train_dl = DataLoader(train, batch_size=batch_size, num_workers=0)
+    if text_proportion == 0:
+        raise ValueError('text proportion is zero', text_proportion)
+
+    if text_proportion < 1.0:
+        text_nullifier = make_nullifier(text_proportion)
+        train = train.map(text_nullifier)
+
+    train_dl = DataLoader(train, batch_size=batch_size, num_workers=4)
+    # NOTE: num_workers MUST REMAIN 0 for test or we will get DIFFERENT
+    # batches each time we log images
     test_dl = DataLoader(test, batch_size=batch_size if test_batch_size is None else test_batch_size, num_workers=0)
 
     return train_dl, test_dl
 
-if __name__ == '__main__':
-    trn, tst = load_laion(
-        'canny',
-        4, 
-        "training/laion-100k-data/{00000..00198}.tar",
-        "training/laion-100k-data/00199.tar",
-        resize=512,
-        proportion=None
-    )
+# if __name__ == '__main__':
+#     trn, tst = load_laion(
+#         'canny',
+#         4, 
+#         "training/laion-100k-data/{00000..00198}.tar",
+#         "training/laion-100k-data/00199.tar",
+#         resize=512,
+#         proportion=None
+#     )
 
-    i = iter(tst)
+#     i = iter(tst)
 
-    for j in range(4):
-        out = next(i)
-        
-        # print(type(out['hint']))
-        # print(out['hint'].min())
-        # print(out['hint'].mean())
-        # print(out['hint'].max())
-        print(out['hint'].shape)
-
-
-        # save_image(out['hint'][0], str(j) +'.png')
-
-        # cv2.imwrite(str(j) +'.jpg', cv2.cvtColor((out['hint'] + 1) * 127.5, cv2.COLOR_RGB2BGR))
-
-        # for k, v in out.items():
-        #     print
+#     for j in range(4):
+#         out = next(i)

@@ -50,6 +50,14 @@ class Singleton(torch.nn.Module):
     def forward(self, x):
         return x * self.weight
 
+class Null(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x * 0
+
+
 class ControlledUnetModel(UNetModel):
     def forward(self, x, timesteps=None, context=None, control=None, only_mid_control=False, **kwargs):
         hs = []
@@ -74,7 +82,6 @@ class ControlledUnetModel(UNetModel):
 
         h = h.type(x.dtype)
         return self.out(h)
-
 
 class ControlNet(nn.Module):
     def __init__(
@@ -323,6 +330,9 @@ class ControlNet(nn.Module):
         if zero_conv_type == 'zero_conv':
             return TimestepEmbedSequential(zero_module(conv_module))
 
+        if zero_conv_type == 'null':
+            return TimestepEmbedSequential(Null())
+
         if zero_conv_type == 'normal_1x1_conv':
             return TimestepEmbedSequential(conv_module)
 
@@ -406,7 +416,6 @@ class ControlLDM(LatentDiffusion):
         n_row = min(z.shape[0], n_row)
         log["reconstruction"] = self.decode_first_stage(z)
         log["control"] = c_cat * 2.0 - 1.0
-        log["conditioning"] = log_txt_as_img((512, 512), batch[self.cond_stage_key], size=16)
 
         if plot_diffusion_rows:
             # get diffusion row
